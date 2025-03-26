@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+set PATH=%PATH%;%~dp0bin
 setlocal enabledelayedexpansion
 
 :: GitHub 相关信息
@@ -18,9 +19,9 @@ set "FILES=android12-5.10_kernelsu.ko android13-5.10_kernelsu.ko android13-5.15_
 :: 获取 GitHub 最新版本号
 for /f "tokens=2 delims=:, " %%i in ('curl -s "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
     set "LATEST_VERSION=%%i"
-    set "LATEST_VERSION=!LATEST_VERSION:~1,-1!"
+    set "LATEST_VERSION=!LATEST_VERSION:~1,-1!"   :: 去掉版本号两边的引号
 )
-echo 最新版本: !LATEST_VERSION!
+echo GitHub 最新版本: !LATEST_VERSION!
 
 :: 读取本地存储的版本号
 set VERSION_FILE=%TARGET_DIR%\version.txt
@@ -30,27 +31,44 @@ if exist "%VERSION_FILE%" (
     set "LOCAL_VERSION=none"
 )
 
+:: 清理版本号中的多余空格
+set LOCAL_VERSION=!LOCAL_VERSION: =!
+set LATEST_VERSION=!LATEST_VERSION: =!
+
+:: 输出本地版本与GitHub版本
+echo ============================
+echo 本地版本: !LOCAL_VERSION!
+echo GitHub版本: !LATEST_VERSION!
+echo ============================
+
 :: 比较版本号，判断是否需要重新下载
 if not "!LATEST_VERSION!"=="!LOCAL_VERSION!" (
-    echo 检测到新版本，开始更新 ko 文件...
-    
+    echo 检测到版本差异（GitHub版本: !LATEST_VERSION! vs 本地版本: !LOCAL_VERSION!），开始更新 ko 文件...
+
     for %%F in (%FILES%) do (
         set "FILE_NAME=%%F"
         set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/%LATEST_VERSION%/!FILE_NAME!"
         
+        :: 删除已存在的文件
         if exist "%TARGET_DIR%\!FILE_NAME!" (
-            echo !FILE_NAME! 已存在，跳过下载。
-        ) else (
-            echo 下载 !FILE_NAME!...
-            curl -L --retry 5 --retry-delay 3 -o "%TARGET_DIR%\!FILE_NAME!" "!DOWNLOAD_URL!"
+            echo 删除已存在的文件: !FILE_NAME!
+            del /f /q "%TARGET_DIR%\!FILE_NAME!"
+        )
+
+        echo 下载 !FILE_NAME!...
+        curl -L --retry 5 --retry-delay 3 -# -o "%TARGET_DIR%\!FILE_NAME!" "!DOWNLOAD_URL!"
+        if exist "%TARGET_DIR%\!FILE_NAME!" (
             echo 下载完成！
+        ) else (
+            echo 下载失败！
         )
     )
     
-    echo !LATEST_VERSION! > "%VERSION_FILE%"  :: 更新本地版本号
+    echo !LATEST_VERSION! > "%VERSION_FILE%" 
     echo 所有 ko 文件已更新！
 ) else (
-    echo 当前已是最新版本，无需更新。
+    echo 当前版本已是最新版本，本地版本: !LOCAL_VERSION!，GitHub版本: !LATEST_VERSION!
+    echo 所有 ko 文件已是最新版本，跳过更新。
 )
 
 :: 选择 GKI 版本
@@ -98,4 +116,4 @@ if /i "%del_choice%" == "y" (
 )
 
 pause
-endlocal
+endlocal    
