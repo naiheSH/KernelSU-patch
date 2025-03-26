@@ -38,9 +38,13 @@ if not "!LATEST_VERSION!"=="!LOCAL_VERSION!" (
         set "FILE_NAME=%%F"
         set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/%LATEST_VERSION%/!FILE_NAME!"
         
-        echo 下载 !FILE_NAME!...
-        curl -L --retry 5 --retry-delay 3 -o "%TARGET_DIR%\!FILE_NAME!" "!DOWNLOAD_URL!"
-        echo 下载完成！
+        if exist "%TARGET_DIR%\!FILE_NAME!" (
+            echo !FILE_NAME! 已存在，跳过下载。
+        ) else (
+            echo 下载 !FILE_NAME!...
+            curl -L --retry 5 --retry-delay 3 -o "%TARGET_DIR%\!FILE_NAME!" "!DOWNLOAD_URL!"
+            echo 下载完成！
+        )
     )
     
     echo !LATEST_VERSION! > "%VERSION_FILE%"  :: 更新本地版本号
