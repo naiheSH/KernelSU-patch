@@ -64,8 +64,13 @@ if not "!LATEST_VERSION!"=="!LOCAL_VERSION!" (
         )
     )
     
-    echo!LATEST_VERSION! > "%VERSION_FILE%" 
-    echo 所有 ko 文件已更新！
+    REM 写入最新版本号到文件
+    >"%VERSION_FILE%" echo(!LATEST_VERSION!
+    if errorlevel 1 (
+        echo 写入版本号到文件失败！
+    ) else (
+        echo 所有 ko 文件已更新！
+    )
 ) else (
     echo 当前版本已是最新版本，本地版本:!LOCAL_VERSION!，GitHub版本:!LATEST_VERSION!
     echo 所有 ko 文件已是最新版本，跳过更新。
