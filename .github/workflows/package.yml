@@ -1,0 +1,123 @@
+name: 自动打包 KernelSU Patch
+
+# 触发条件
+on:
+  # 1. 推送到 main 分支时自动打包
+  push:
+    branches: [ main ]
+    # 只在特定文件修改时触发（可选）
+    paths:
+      - 'patch.bat'
+      - 'README.md'
+      - '.github/workflows/package.yml'
+  
+  # 2. 手动触发（可在 GitHub 页面点击按钮执行）
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '打包版本标签'
+        required: false
+        default: 'latest'
+        type: string
+
+# 工作流任务
+jobs:
+  build:
+    # 使用 Ubuntu 最新版运行
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 1. 检出代码
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    # 2. 显示目录结构（调试用）
+    - name: 查看目录结构
+      run: ls -la
+    
+    # 3. 打包项目
+    - name: 打包文件
+      run: |
+        # 创建打包目录
+        mkdir -p dist
+        
+        # 复制必要文件到打包目录
+        cp -r ko/ bin/ patch.bat README.md .gitattributes dist/
+        
+        # 显示打包结果
+        echo "=== 打包文件列表 ==="
+        ls -la dist/
+    
+    # 4. 生成打包信息
+    - name: 生成打包信息
+      run: |
+        # 获取当前时间
+        CURRENT_TIME=$(date +"%Y%m%d_%H%M%S")
+        
+        # 写入打包信息文件
+        cat > dist/PACKAGE_INFO.md << EOF
+        # KernelSU Patch 打包信息
+        
+        ## 版本信息
+        - 打包时间: $(date)
+        - Git 提交: ${{ github.sha }}
+        - 打包标签: ${{ github.event.inputs.tag || 'latest' }}
+        
+        ## 包含文件
+        $(ls -la dist/ | grep -v "PACKAGE_INFO.md" | grep -v "total" | awk '{print "- " $9}')
+        
+        ## 使用说明
+        1. 将 boot.img/init_boot.img 放入 img 目录
+        2. 运行 patch.bat
+        3. 选择对应 GKI 版本
+        4. 生成的内核镜像位于当前目录
+        EOF
+    
+    # 5. 压缩打包产物
+    - name: 压缩打包产物
+      run: |
+        cd dist
+        # 创建压缩包
+        zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" ./*
+        # 显示压缩结果
+        ls -la *.zip
+        # 返回上级目录
+        cd ..
+    
+    # 6. 上传打包产物（完整目录）
+    - name: 上传打包目录
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernelsu-patch-directory
+        path: dist/
+        retention-days: 30
+    
+    # 7. 上传打包产物（ZIP 压缩包）
+    - name: 上传 ZIP 压缩包
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernelsu-patch-zip
+        path: dist/kernelsu-patch-*.zip
+        retention-days: 90
+    
+    # 8. 创建 GitHub Release（可选，仅当推送到 main 分支时）
+    - name: 创建 GitHub Release（可选）
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ github.run_number }}
+        name: 自动打包发布 v${{ github.run_number }}
+        body: |
+          自动打包发布
+          
+          - 打包时间: ${{ github.event.head_commit.timestamp }}
+          - 提交信息: ${{ github.event.head_commit.message }}
+          - 提交作者: ${{ github.event.head_commit.author.name }}
+        files: |
+          dist/kernelsu-patch-*.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
