@@ -37,14 +37,29 @@ jobs:
     - name: 查看目录结构
       run: ls -la
     
-    # 3. 打包项目
+    # 3. 更新 ko 文件（使用批处理脚本，通过 wine 运行）
+    - name: 更新 ko 文件
+      run: |
+        # 安装 wine（用于运行批处理脚本）
+        sudo apt-get update
+        sudo apt-get install -y wine
+        
+        # 运行批处理脚本更新 ko 文件
+        echo "=== 更新 ko 文件 ==="
+        wine update_ko.bat || true
+        
+        # 查看更新结果
+        echo "=== ko 文件列表 ==="
+        ls -la ko/
+
+    # 4. 打包项目
     - name: 打包文件
       run: |
         # 创建打包目录
         mkdir -p dist
         
         # 复制必要文件到打包目录
-        cp -r ko/ bin/ patch.bat README.md .gitattributes dist/
+        cp -r ko/ bin/ patch.bat update_ko.bat README.md .gitattributes dist/
         
         # 显示打包结果
         echo "=== 打包文件列表 ==="
