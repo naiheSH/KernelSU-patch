@@ -94,16 +94,15 @@ jobs:
         4. 生成的内核镜像位于当前目录
         EOF
     
-    # 5. 压缩打包产物
+    # 5. 压缩打包产物（直接在根目录压缩，避免嵌套压缩）
     - name: 压缩打包产物
       run: |
-        cd dist
-        # 创建压缩包
-        zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" ./*
+        # 在根目录直接压缩 dist 目录
+        zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" dist/*
+        
         # 显示压缩结果
+        echo "=== 压缩结果 ==="
         ls -la *.zip
-        # 返回上级目录
-        cd ..
     
     # 6. 上传打包产物（完整目录）
     - name: 上传打包目录
@@ -118,7 +117,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: kernelsu-patch-zip
-        path: dist/kernelsu-patch-*.zip
+        path: kernelsu-patch-*.zip
         retention-days: 90
     
     # 8. 创建 GitHub Release（可选，仅当推送到 main 分支时）
@@ -135,7 +134,7 @@ jobs:
           - 提交信息: ${{ github.event.head_commit.message }}
           - 提交作者: ${{ github.event.head_commit.author.name }}
         files: |
-          dist/kernelsu-patch-*.zip
+          kernelsu-patch-*.zip
         draft: false
         prerelease: false
       env:
