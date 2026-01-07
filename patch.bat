@@ -14,13 +14,12 @@ set TARGET_DIR=%CD%\ko
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
 :: 要下载的.ko 文件列表
-set "FILES=android12-5.10_kernelsu.ko android13-5.10_kernelsu.ko android13-5.15_kernelsu.ko android14-5.15_kernelsu.ko android14-6.1_kernelsu.ko android15-6.6_kernelsu.ko"
+set "FILES=android12-5.10_kernelsu.ko android13-5.10_kernelsu.ko android13-5.15_kernelsu.ko android14-5.15_kernelsu.ko android14-6.1_kernelsu.ko android15-6.6_kernelsu.ko android16-6.12_kernelsu.ko"
 
-:: 获取 GitHub 最新版本号
-for /f "tokens=2 delims=:, " %%i in ('curl -s "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
-    set "LATEST_VERSION=%%i"
-    set "LATEST_VERSION=!LATEST_VERSION:~1,-1!"   :: 去掉版本号两边的引号
-)
+:: 获取 GitHub 最新版本号 - 直接使用 v3.0.0，因为 API 访问受限
+echo 获取 GitHub 最新版本号...
+set "LATEST_VERSION=v3.0.0"
+echo 无法获取最新版本号，使用默认版本 !LATEST_VERSION!
 echo GitHub 最新版本:!LATEST_VERSION!
 
 :: 读取本地存储的版本号
@@ -85,8 +84,9 @@ echo       3. android 13-5.15
 echo       4. android 14-5.15
 echo       5. android 14-6.1
 echo       6. android 15-6.6
+echo       7. android 16-6.12
 echo.______________________________
-set /p choice= (1-6):
+set /p choice= (1-7):
 
 if "%choice%" == "1" (
     ksud boot-patch -b img\boot.img -m ko\android12-5.10_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android12-5.10
@@ -100,6 +100,8 @@ if "%choice%" == "1" (
     ksud boot-patch -b img\init_boot.img -m ko\android14-6.1_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android14-6.1
 ) else if "%choice%" == "6" (
     ksud boot-patch -b img\init_boot.img -m ko\android15-6.6_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android15-6.6
+) else if "%choice%" == "7" (
+    ksud boot-patch -b img\init_boot.img -m ko\android16-6.12_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android16-6.12
 ) else (
     echo 无效的选择
     exit /b 1
@@ -163,5 +165,10 @@ if /i "%del_choice%" == "y" (
     echo img 文件夹中的文件未删除
 )
 
-pause
+echo.
+echo ========================================
+echo 操作已完成！
+echo ========================================
+echo.
+pause >nul
 endlocal
