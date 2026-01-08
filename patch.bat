@@ -168,7 +168,8 @@ if /i "%del_choice%" == "y" (
 echo.
 echo ========================================
 echo 操作已完成！
+echo 按任意键退出...
 echo ========================================
 echo.
-pause >nul
+pause
 endlocal
