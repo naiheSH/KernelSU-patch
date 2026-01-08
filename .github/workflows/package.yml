@@ -56,19 +56,6 @@ jobs:
         echo "=== ko 文件列表 ==="
         ls -la ko/
 
-    # 4. 打包项目
-    - name: 打包文件
-      run: |
-        # 创建打包目录
-        mkdir -p dist
-        
-        # 复制必要文件到打包目录
-        cp -r ko/ bin/ patch.bat update_ko.bat README.md .gitattributes dist/
-        
-        # 显示打包结果
-        echo "=== 打包文件列表 ==="
-        ls -la dist/
-    
     # 4. 生成打包信息
     - name: 生成打包信息
       run: |
@@ -76,7 +63,7 @@ jobs:
         CURRENT_TIME=$(date +"%Y%m%d_%H%M%S")
         
         # 写入打包信息文件
-        cat > dist/PACKAGE_INFO.md << EOF
+        cat > PACKAGE_INFO.md << EOF
         # KernelSU Patch 打包信息
         
         ## 版本信息
@@ -85,7 +72,13 @@ jobs:
         - 打包标签: ${{ github.event.inputs.tag || 'latest' }}
         
         ## 包含文件
-        $(ls -la dist/ | grep -v "PACKAGE_INFO.md" | grep -v "total" | awk '{print "- " $9}')
+        - ko/
+        - bin/
+        - patch.bat
+        - update_ko.bat
+        - README.md
+        - .gitattributes
+        - PACKAGE_INFO.md
         
         ## 使用说明
         1. 将 boot.img/init_boot.img 放入 img 目录
@@ -94,25 +87,29 @@ jobs:
         4. 生成的内核镜像位于当前目录
         EOF
     
-    # 5. 压缩打包产物（直接在根目录压缩，避免嵌套压缩）
-    - name: 压缩打包产物
+    # 5. 直接创建压缩包（不使用中间dist目录，避免二次压缩）
+    - name: 创建压缩包
       run: |
-        # 在根目录直接压缩 dist 目录
-        zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" dist/*
+        # 直接在根目录打包需要的文件，只压缩一次
+        zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
+          ko/ \
+          bin/ \
+          patch.bat \
+          update_ko.bat \
+          README.md \
+          .gitattributes \
+          PACKAGE_INFO.md \
+          --exclude="*.git*" \
+          --exclude="*.github*"
         
         # 显示压缩结果
         echo "=== 压缩结果 ==="
         ls -la *.zip
+        
+        # 清理临时文件
+        rm -f PACKAGE_INFO.md
     
-    # 6. 上传打包产物（完整目录）
-    - name: 上传打包目录
-      uses: actions/upload-artifact@v4
-      with:
-        name: kernelsu-patch-directory
-        path: dist/
-        retention-days: 30
-    
-    # 7. 上传打包产物（ZIP 压缩包）
+    # 6. 上传 ZIP 压缩包
     - name: 上传 ZIP 压缩包
       uses: actions/upload-artifact@v4
       with:
