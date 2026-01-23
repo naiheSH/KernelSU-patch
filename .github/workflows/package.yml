@@ -130,10 +130,8 @@ jobs:
         for file in patch.bat update_ko.bat; do
           if [[ -f $file ]]; then
             echo "=== 处理文件: $file ==="
-            # 创建临时文件，确保正确格式
-            cat > temp.bat << 'EOF'
-$(cat $file)
-EOF
+            # 复制文件
+            cp $file temp.bat
             # 移除 BOM 并确保 UTF-8 编码
             sed -i '1s/^\xEF\xBB\xBF//' temp.bat
             # 转换为 Windows 行尾符
