@@ -122,17 +122,50 @@ jobs:
     # 5. 直接创建压缩包（确保文件直接在根目录，避免二次压缩）
     - name: 创建压缩包
       run: |
-        # 确保文件编码正确（UTF-8 无 BOM）
+        # 安装必要工具
+        sudo apt-get update
+        sudo apt-get install -y dos2unix zip
+        
+        # 确保文件编码正确（UTF-8 无 BOM，CRLF 行尾符）
         for file in patch.bat update_ko.bat; do
           if [[ -f $file ]]; then
+            echo "=== 处理文件: $file ==="
+            # 创建临时文件，确保正确格式
+            cat > temp.bat << 'EOF'
+$(cat $file)
+EOF
             # 移除 BOM 并确保 UTF-8 编码
-            sed -i '1s/^\xEF\xBB\xBF//' $file
-            # 验证编码
+            sed -i '1s/^\xEF\xBB\xBF//' temp.bat
+            # 转换为 Windows 行尾符
+            unix2dos temp.bat
+            # 替换原文件
+            mv temp.bat $file
+            # 验证编码和格式
             file -i $file
+            cat -A $file | head -5
           fi
         done
         
+        # 验证目录结构
+        echo "=== 验证目录结构 ==="
+        ls -la
+        ls -la ko/
+        ls -la bin/
+        ls -la img/
+        
         # 直接在根目录打包需要的文件，只压缩一次
+        echo "=== 创建压缩包 ==="
+        zip -j "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
+          ko/* \
+          bin/* \
+          img/* \
+          patch.bat \
+          update_ko.bat \
+          README.md \
+          --exclude="*.git*" \
+          --exclude="*.github*" \
+          --exclude="*.zip" \
+          --exclude="*.md" || \
         zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
           ko/ \
           bin/ \
@@ -140,11 +173,10 @@ jobs:
           patch.bat \
           update_ko.bat \
           README.md \
-          .gitattributes \
-          PACKAGE_INFO.md \
           --exclude="*.git*" \
           --exclude="*.github*" \
-          --exclude="*.zip"
+          --exclude="*.zip" \
+          --exclude="*.md"
         
         # 显示压缩结果和文件结构
         echo "=== 压缩结果 ==="
