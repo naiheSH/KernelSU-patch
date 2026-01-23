@@ -99,24 +99,38 @@ jobs:
         4. 生成的内核镜像位于当前目录
         EOF
     
-    # 5. 直接创建压缩包（不使用中间dist目录，避免二次压缩）
+    # 5. 直接创建压缩包（确保文件直接在根目录，避免二次压缩）
     - name: 创建压缩包
       run: |
+        # 确保文件编码正确（UTF-8 无 BOM）
+        for file in patch.bat update_ko.bat; do
+          if [[ -f $file ]]; then
+            # 移除 BOM 并确保 UTF-8 编码
+            sed -i '1s/^\xEF\xBB\xBF//' $file
+            # 验证编码
+            file -i $file
+          fi
+        done
+        
         # 直接在根目录打包需要的文件，只压缩一次
         zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
           ko/ \
           bin/ \
+          img/ \
           patch.bat \
           update_ko.bat \
           README.md \
           .gitattributes \
           PACKAGE_INFO.md \
           --exclude="*.git*" \
-          --exclude="*.github*"
+          --exclude="*.github*" \
+          --exclude="*.zip"
         
-        # 显示压缩结果
+        # 显示压缩结果和文件结构
         echo "=== 压缩结果 ==="
         ls -la *.zip
+        echo "=== 压缩包内容 ==="
+        unzip -l "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip"
         
         # 清理临时文件
         rm -f PACKAGE_INFO.md

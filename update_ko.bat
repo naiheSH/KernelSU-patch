@@ -58,4 +58,3 @@ for %%F in (%FILES%) do (
 echo 所有 ko 文件已更新！
 echo 版本号已更新为 !LATEST_VERSION!
 endlocal
-pause
