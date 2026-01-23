@@ -149,11 +149,11 @@ if defined NEWEST_FILE (
         ren "!NEWEST_PATH!" "!NEW_NAME!"
         echo 生成的文件已重命名为 !NEW_NAME!
         set "RENAME_SUCCESS=1"
-        goto END_RENAME  :: 重命名成功后直接跳转到结束重命名的标签处
+        goto END_RENAME
     )
 ) else (
     echo 未找到生成的文件，无法重命名。
-    goto END_RENAME  :: 未找到文件也直接跳转到结束重命名的标签处
+    goto END_RENAME
 )
 :END_RENAME
 if "!RENAME_SUCCESS!" equ "0" (

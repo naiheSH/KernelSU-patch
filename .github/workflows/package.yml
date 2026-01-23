@@ -53,18 +53,38 @@ jobs:
     - name: 查看目录结构
       run: ls -la
     
-    # 3. 更新 ko 文件（使用批处理脚本，通过 wine 运行）
-    - name: 更新 ko 文件
+    # 3. 直接从 GitHub 下载最新的 ko 文件
+    - name: 从 GitHub 下载 ko 文件
       run: |
-        # 安装 wine（用于运行批处理脚本）
-        sudo apt-get update
-        sudo apt-get install -y wine
+        # 创建 ko 目录（如果不存在）
+        mkdir -p ko
         
-        # 运行批处理脚本更新 ko 文件
-        echo "=== 更新 ko 文件 ==="
-        wine update_ko.bat || true
+        # 获取 GitHub 最新发布版本
+        echo "=== 获取 GitHub 最新发布版本 ==="
+        LATEST_RELEASE=$(curl -s -L -k "https://api.github.com/repos/tiann/KernelSU/releases/latest")
+        LATEST_VERSION=$(echo $LATEST_RELEASE | grep -oP '(?<="tag_name": ")[^"]+')
+        echo "最新版本: $LATEST_VERSION"
         
-        # 查看更新结果
+        # 要下载的.ko 文件列表
+        FILES=("android12-5.10_kernelsu.ko" "android13-5.10_kernelsu.ko" "android13-5.15_kernelsu.ko" "android14-5.15_kernelsu.ko" "android14-6.1_kernelsu.ko" "android15-6.6_kernelsu.ko" "android16-6.12_kernelsu.ko")
+        
+        # 下载所有 ko 文件
+        echo "=== 下载 ko 文件 ==="
+        for FILE in "${FILES[@]}"; do
+          DOWNLOAD_URL="https://github.com/tiann/KernelSU/releases/download/$LATEST_VERSION/$FILE"
+          echo "下载 $FILE..."
+          curl -L --retry 5 --retry-delay 3 -# -o "ko/$FILE" "$DOWNLOAD_URL"
+          if [ -f "ko/$FILE" ]; then
+            echo "✓ 下载完成！"
+          else
+            echo "✗ 下载失败！"
+          fi
+        done
+        
+        # 写入版本号到文件
+        echo $LATEST_VERSION > ko/version.txt
+        
+        # 查看下载结果
         echo "=== ko 文件列表 ==="
         ls -la ko/
 
