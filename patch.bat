@@ -16,16 +16,26 @@ if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 :: 要下载的.ko 文件列表
 set "FILES=android12-5.10_kernelsu.ko android13-5.10_kernelsu.ko android13-5.15_kernelsu.ko android14-5.15_kernelsu.ko android14-6.1_kernelsu.ko android15-6.6_kernelsu.ko android16-6.12_kernelsu.ko"
 
-:: 获取 GitHub 最新版本号 - 直接使用 v3.0.0，因为 API 访问受限
+:: 获取 GitHub 最新版本号
 echo 获取 GitHub 最新版本号...
-set "LATEST_VERSION=v3.0.0"
-echo 无法获取最新版本号，使用默认版本 !LATEST_VERSION!
-echo GitHub 最新版本:!LATEST_VERSION!
+timeout /t 1 >nul
+for /f "delims=" %%i in ('curl -s -L -k "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
+    set "TAG_LINE=%%i"
+    set "LATEST_VERSION=!TAG_LINE:~15,-2!"
+)
+
+:: 如果获取失败，使用默认版本
+if not defined LATEST_VERSION (
+    set "LATEST_VERSION=v3.0.0"
+    echo 无法获取最新版本号，使用默认版本 !LATEST_VERSION!
+) else (
+    echo 成功获取 GitHub 最新版本:!LATEST_VERSION!
+)
 
 :: 读取本地存储的版本号
 set VERSION_FILE=%TARGET_DIR%\version.txt
 if exist "%VERSION_FILE%" (
-    set /p LOCAL_VERSION=<"%VERSION_FILE%"
+    set /p LOCAL_VERSION=<%VERSION_FILE%
 ) else (
     set "LOCAL_VERSION=none"
 )
