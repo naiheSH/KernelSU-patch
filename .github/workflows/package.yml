@@ -119,8 +119,8 @@ jobs:
         4. 生成的内核镜像位于当前目录
         EOF
     
-    # 5. 直接创建压缩包（确保文件直接在根目录，避免二次压缩）
-    - name: 创建压缩包
+    # 5. 准备文件并创建压缩包
+    - name: 准备发布文件
       run: |
         # 安装必要工具
         sudo apt-get update
@@ -130,53 +130,43 @@ jobs:
         for file in patch.bat update_ko.bat; do
           if [[ -f $file ]]; then
             echo "=== 处理文件: $file ==="
-            # 复制文件
             cp $file temp.bat
-            # 移除 BOM 并确保 UTF-8 编码
             sed -i '1s/^\xEF\xBB\xBF//' temp.bat
-            # 转换为 Windows 行尾符
             unix2dos temp.bat
-            # 替换原文件
             mv temp.bat $file
-            # 验证编码和格式
             file -i $file
-            cat -A $file | head -5
           fi
         done
         
-        # 验证目录结构
-        echo "=== 验证目录结构 ==="
-        ls -la
-        ls -la ko/
-        ls -la bin/
-        ls -la img/
+        # 创建干净的输出目录，用于 artifact 上传（避免二次压缩）
+        mkdir -p output/ko output/bin output/img
+        cp -r ko/* output/ko/
+        cp -r bin/* output/bin/
+        cp -r img/* output/img/ 2>/dev/null || true
+        cp patch.bat update_ko.bat README.md output/
         
-        # 直接在根目录打包需要的文件，保留目录结构
-        echo "=== 创建压缩包 ==="
-        zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
-          ko/ \
-          bin/ \
-          img/ \
-          patch.bat \
-          update_ko.bat \
-          README.md \
-          -x "*.git*" "*.github*" "*.zip"
+        # 验证输出目录结构
+        echo "=== 输出目录结构 ==="
+        find output -type f | sort
         
-        # 显示压缩结果和文件结构
-        echo "=== 压缩结果 ==="
-        ls -la *.zip
+        # 为 Release 创建 zip（保留目录结构）
+        echo "=== 创建 Release 压缩包 ==="
+        cd output
+        zip -r "../kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" .
+        cd ..
+        
         echo "=== 压缩包内容 ==="
         unzip -l "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip"
         
         # 清理临时文件
         rm -f PACKAGE_INFO.md
     
-    # 6. 上传 ZIP 压缩包
-    - name: 上传 ZIP 压缩包
+    # 6. 上传 artifact（直接上传目录，GitHub 自动打包为单层 zip）
+    - name: 上传 artifact
       uses: actions/upload-artifact@v4
       with:
-        name: kernelsu-patch-zip
-        path: kernelsu-patch-*.zip
+        name: kernelsu-patch
+        path: output/
         retention-days: 90
     
     # 7. 创建 GitHub Release（仅稳定版）
