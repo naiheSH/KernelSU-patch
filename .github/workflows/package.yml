@@ -151,19 +151,8 @@ jobs:
         ls -la bin/
         ls -la img/
         
-        # 直接在根目录打包需要的文件，只压缩一次
+        # 直接在根目录打包需要的文件，保留目录结构
         echo "=== 创建压缩包 ==="
-        zip -j "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
-          ko/* \
-          bin/* \
-          img/* \
-          patch.bat \
-          update_ko.bat \
-          README.md \
-          --exclude="*.git*" \
-          --exclude="*.github*" \
-          --exclude="*.zip" \
-          --exclude="*.md" || \
         zip -r "kernelsu-patch-${{ github.event.inputs.tag || 'latest' }}.zip" \
           ko/ \
           bin/ \
@@ -171,10 +160,7 @@ jobs:
           patch.bat \
           update_ko.bat \
           README.md \
-          --exclude="*.git*" \
-          --exclude="*.github*" \
-          --exclude="*.zip" \
-          --exclude="*.md"
+          -x "*.git*" "*.github*" "*.zip"
         
         # 显示压缩结果和文件结构
         echo "=== 压缩结果 ==="

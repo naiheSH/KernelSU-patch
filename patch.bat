@@ -19,9 +19,20 @@ set "FILES=android12-5.10_kernelsu.ko android13-5.10_kernelsu.ko android13-5.15_
 :: 获取 GitHub 最新版本号
 echo 获取 GitHub 最新版本号...
 timeout /t 1 >nul
-for /f "delims=" %%i in ('curl -s -L -k "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
+for /f "delims=" %%i in ('curl -s -L "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
     set "TAG_LINE=%%i"
-    set "LATEST_VERSION=!TAG_LINE:~15,-2!"
+)
+:: 从 tag_name 行中提取版本号
+:: 格式如:   "tag_name": "v3.2.4",
+if defined TAG_LINE (
+    :: 去除引号
+    set "TAG_LINE=!TAG_LINE:"=!"
+    :: 去除逗号
+    set "TAG_LINE=!TAG_LINE:,=!"
+    :: 去除空格
+    set "TAG_LINE=!TAG_LINE: =!"
+    :: 此时为 tag_name:v3.2.4 ，取冒号后面的部分
+    for /f "tokens=2 delims=:" %%a in ("!TAG_LINE!") do set "LATEST_VERSION=%%a"
 )
 
 :: 如果获取失败，使用默认版本
@@ -56,7 +67,7 @@ if not "!LATEST_VERSION!"=="!LOCAL_VERSION!" (
 
     for %%F in (%FILES%) do (
         set "FILE_NAME=%%F"
-        set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/%LATEST_VERSION%/!FILE_NAME!"
+        set "DOWNLOAD_URL=https://github.com/!REPO_OWNER!/!REPO_NAME!/releases/download/!LATEST_VERSION!/!FILE_NAME!"
         
         :: 删除已存在的文件
         if exist "%TARGET_DIR%\!FILE_NAME!" (
@@ -99,18 +110,60 @@ echo.______________________________
 set /p choice= (1-7):
 
 if "%choice%" == "1" (
+    if not exist "img\boot.img" (
+        echo 错误: 未找到 img\boot.img 文件！
+        echo 请将你的 boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\boot.img -m ko\android12-5.10_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android12-5.10
 ) else if "%choice%" == "2" (
+    if not exist "img\init_boot.img" (
+        echo 错误: 未找到 img\init_boot.img 文件！
+        echo 请将你的 init_boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\init_boot.img -m ko\android13-5.10_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android13-5.10
 ) else if "%choice%" == "3" (
+    if not exist "img\init_boot.img" (
+        echo 错误: 未找到 img\init_boot.img 文件！
+        echo 请将你的 init_boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\init_boot.img -m ko\android13-5.15_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android13-5.15
 ) else if "%choice%" == "4" (
+    if not exist "img\init_boot.img" (
+        echo 错误: 未找到 img\init_boot.img 文件！
+        echo 请将你的 init_boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\init_boot.img -m ko\android14-5.15_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android14-5.15
 ) else if "%choice%" == "5" (
+    if not exist "img\init_boot.img" (
+        echo 错误: 未找到 img\init_boot.img 文件！
+        echo 请将你的 init_boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\init_boot.img -m ko\android14-6.1_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android14-6.1
 ) else if "%choice%" == "6" (
+    if not exist "img\init_boot.img" (
+        echo 错误: 未找到 img\init_boot.img 文件！
+        echo 请将你的 init_boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\init_boot.img -m ko\android15-6.6_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android15-6.6
 ) else if "%choice%" == "7" (
+    if not exist "img\init_boot.img" (
+        echo 错误: 未找到 img\init_boot.img 文件！
+        echo 请将你的 init_boot.img 放入 img 目录后重试。
+        pause
+        exit /b 1
+    )
     ksud boot-patch -b img\init_boot.img -m ko\android16-6.12_kernelsu.ko --magiskboot bin\magiskboot.exe --kmi android16-6.12
 ) else (
     echo 无效的选择
@@ -122,16 +175,12 @@ timeout /t 3 /nobreak >nul
 
 :: 找出脚本当前目录下最新修改的文件并重命名
 set "NEWEST_FILE="
-set "NEWEST_TIME=0"
 set "RENAME_SUCCESS=0"
+:: dir /o-d 已按修改时间降序排列，取第一个即为最新文件
 for /f "delims=" %%F in ('dir /b /o-d /t:w "*.img" 2^>nul') do (
-    for /f "tokens=2 delims=:" %%t in ('echo %%~tF') do (
-        set "CURRENT_TIME=%%t"
-        if "!CURRENT_TIME!" gtr "!NEWEST_TIME!" (
-            set "NEWEST_FILE=%%F"
-            set "NEWEST_PATH=%CD%\%%F"
-            set "NEWEST_TIME=!CURRENT_TIME!"
-        )
+    if not defined NEWEST_FILE (
+        set "NEWEST_FILE=%%F"
+        set "NEWEST_PATH=%CD%\%%F"
     )
 )
 if defined NEWEST_FILE (
@@ -166,8 +215,11 @@ set /p del_choice=
 
 if /i "%del_choice%" == "y" (
     if exist img\* (
-        del /Q img\*
-        echo img 文件夹中的所有文件已删除
+        :: 删除 img 目录中的文件，但保留 git 占位文件
+        for %%f in (img\*) do (
+            if /i not "%%~nxf"=="img目录.txt" del /Q "%%f"
+        )
+        echo img 文件夹中的镜像文件已删除
     ) else (
         echo img 文件夹已为空或不存在
     )

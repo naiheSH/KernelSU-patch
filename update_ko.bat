@@ -19,9 +19,20 @@ set "FILES=android12-5.10_kernelsu.ko android13-5.10_kernelsu.ko android13-5.15_
 :: 获取 GitHub 最新版本号
 echo 获取 GitHub 最新版本号...
 timeout /t 1 >nul
-for /f "delims=" %%i in ('curl -s -L -k "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
+for /f "delims=" %%i in ('curl -s -L "https://api.github.com/repos/%REPO_OWNER%/%REPO_NAME%/releases/latest" ^| findstr /i "tag_name"') do (
     set "TAG_LINE=%%i"
-    set "LATEST_VERSION=!TAG_LINE:~15,-2!"
+)
+:: 从 tag_name 行中提取版本号
+:: 格式如:   "tag_name": "v3.2.4",
+if defined TAG_LINE (
+    :: 去除引号
+    set "TAG_LINE=!TAG_LINE:"=!"
+    :: 去除逗号
+    set "TAG_LINE=!TAG_LINE:,=!"
+    :: 去除空格
+    set "TAG_LINE=!TAG_LINE: =!"
+    :: 此时为 tag_name:v3.2.4 ，取冒号后面的部分
+    for /f "tokens=2 delims=:" %%a in ("!TAG_LINE!") do set "LATEST_VERSION=%%a"
 )
 
 :: 如果获取失败，使用默认版本
@@ -32,13 +43,10 @@ if not defined LATEST_VERSION (
     echo 成功获取 GitHub 最新版本:!LATEST_VERSION!
 )
 
-:: 写入最新版本号到文件
->"%TARGET_DIR%\version.txt" echo(!LATEST_VERSION!
-
 :: 下载所有 ko 文件
 for %%F in (%FILES%) do (
     set "FILE_NAME=%%F"
-    set "DOWNLOAD_URL=https://github.com/%REPO_OWNER%/%REPO_NAME%/releases/download/%LATEST_VERSION%/!FILE_NAME!"
+    set "DOWNLOAD_URL=https://github.com/!REPO_OWNER!/!REPO_NAME!/releases/download/!LATEST_VERSION!/!FILE_NAME!"
     
     :: 删除已存在的文件
     if exist "%TARGET_DIR%\!FILE_NAME!" (
@@ -54,6 +62,9 @@ for %%F in (%FILES%) do (
         echo 下载失败！
     )
 )
+
+:: 写入最新版本号到文件（在下载完成后写入）
+>"%TARGET_DIR%\version.txt" echo(!LATEST_VERSION!
 
 echo 所有 ko 文件已更新！
 echo 版本号已更新为 !LATEST_VERSION!
